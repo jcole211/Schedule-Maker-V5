@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Schedule Maker</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{--red:#942e1d;--gray:#4d4d4d;--green:#4e8f52}
+*{box-sizing:border-box}
+body{margin:0;background:var(--red);color:#111;font:18px/1.3 'Share Tech Mono','Courier New',monospace}
+.page{display:none;min-height:100vh;padding:20px 28px 50px}.page.on{display:block}
+header{position:relative;text-align:center;min-height:84px}
+h1{margin:8px 76px;font-size:clamp(26px,4.5vw,50px);font-weight:400}
+h2{margin:0 0 14px;font-weight:400;text-align:center;color:#f2f2f2;font-size:22px}
+.sub{text-align:center;font-size:clamp(18px,2.4vw,30px);margin:10px 0 34px}
+/* nav arrows (curved, mirrored for "back") */
+.arrow{position:absolute;top:0;width:66px;height:66px;background:none;border:0;cursor:pointer;padding:0}
+.arrow.l{left:0}.arrow.l svg{transform:scaleX(-1)}.arrow.r{right:0}.arrow svg{width:100%;height:100%}
+.arrow:hover{transform:scale(1.08)}
+.panel{background:var(--gray);border:8px solid #fff;padding:22px;position:relative}
+.row3{display:flex;gap:28px;flex-wrap:wrap;justify-content:center}.row3 .panel{flex:1 1 280px;max-width:420px;min-height:420px}
+.bar{display:block;width:100%;background:#fff;border:3px solid #000;color:#000;font:inherit;padding:6px 10px;text-align:center;margin-bottom:12px}
+button.bar{cursor:pointer}button.bar:hover{background:#ddd}button.bar.on{background:var(--red);color:#fff}
+input.bar{outline:none}input.bar:focus{background:#fff6d6}
+label.lb{color:#f2f2f2;display:block;margin:0 0 4px}
+.list{position:absolute;left:22px;right:22px;background:#fff;border:3px solid #000;max-height:260px;overflow:auto;z-index:5;display:none}
+.list div{padding:6px 10px;cursor:pointer;color:#000;font-size:15px}.list div:hover{background:#ffd9d2}
+.list small{color:#666}
+.cols{display:grid;grid-template-columns:1.15fr 1fr;gap:28px;align-items:start}
+@media(max-width:800px){.cols{grid-template-columns:1fr}}
+.sel{display:flex;gap:8px;align-items:center;text-align:left}.sel b{white-space:nowrap}
+.sel .nm{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sel input{width:44px;font:inherit;border:2px solid #000;text-align:center}
+.sel button{font:inherit;border:0;background:none;cursor:pointer;color:#900;font-size:22px;line-height:1}
+.opt{font:inherit;border:2px solid #000;background:#f4f4f4;margin:2px 3px;padding:2px 8px;cursor:pointer}.opt:hover{background:#ffd9d2}
+.hd{color:#f2f2f2;font-size:15px;margin:14px 0 6px;text-align:left;border-bottom:1px solid #888}
+.chk{display:flex;gap:8px;align-items:center;color:#f2f2f2;margin:6px 0;font-size:16px}
+#pop{position:fixed;display:none;z-index:8;background:#fff;color:#000;border:4px solid #000;padding:12px 14px;max-width:340px;font-size:14px;box-shadow:6px 6px 0 rgba(0,0,0,.45)}
+#pop h3{margin:0 24px 6px 0;font-size:17px}#pop p{margin:3px 0}#pop b{color:#942e1d}
+#pop .x{position:absolute;top:2px;right:8px;border:0;background:none;font:inherit;font-size:24px;cursor:pointer}
+.hint{color:#ddd;text-align:center;font-size:15px}
+/* timetable shared by time-selection + results pages */
+.tt{display:grid;grid-template-columns:82px 1fr;max-width:1150px;margin:0 auto}
+.gh,.gb{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:0 8px}
+.gh div{text-align:center;padding-bottom:4px}
+.gb{background:#000;padding:8px;touch-action:none;user-select:none}
+.tl{position:relative}.tl span{position:absolute;right:8px;font-size:13px;transform:translateY(-2px)}
+.col{background:var(--gray);position:relative;min-width:0}
+.cell{border-bottom:1px solid rgba(0,0,0,.4);cursor:pointer}.cell.on{background:var(--green)}
+.col.s{background:repeating-linear-gradient(#4d4d4d 0 51px,#333 51px 52px)}
+.cls{cursor:pointer;position:absolute;left:3px;right:3px;background:#fff;border:2px solid #000;border-left-width:8px;overflow:hidden;font-size:13px;line-height:1.15;text-align:center;padding:1px 2px;color:#000;font-weight:bold}
+.cls b{display:block;font-size:14px}
+.foot{text-align:center;margin:18px 0 6px;font-size:clamp(14px,2vw,24px)}
+.tools{text-align:center}.tools button{font:inherit;border:3px solid #000;background:#fff;padding:3px 12px;margin:6px;cursor:pointer}
+.tools label{margin:0 12px}
+.nav{display:flex;justify-content:center;align-items:center;gap:40px;margin-top:14px}
+.nav button{background:none;border:0;cursor:pointer;width:90px}.nav svg{width:100%}
+.nav button:disabled{opacity:.25;cursor:default}
+#msg{text-align:center;margin:14px auto;max-width:800px;font-size:18px}
+#det{max-width:1150px;margin:16px auto 0;font-size:14px;color:#111;border-collapse:collapse;width:100%}
+#det td,#det th{border:1px solid #000;padding:3px 6px;background:rgba(255,255,255,.85);text-align:left}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#000;color:#fff;padding:8px 18px;display:none;z-index:9}
+#load{position:fixed;inset:0;background:var(--red);display:flex;align-items:center;justify-content:center;font-size:26px;z-index:20}
+</style></head><body>
+<div id="pop"></div><div id="load">Loading course data…</div><div id="toast"></div>
+
+<!-- reusable arrow art: curved nav arrow (white w/ black stroke) -->
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="ar" viewBox="0 0 100 100"><path d="M8 95C6 55 28 22 58 20V2L96 28 58 54V38C30 38 16 62 8 95Z" fill="#fff" stroke="#000" stroke-width="5" stroke-linejoin="round"/></symbol>
+<symbol id="st" viewBox="0 0 100 60"><path d="M0 24H58V6L98 30 58 54V36H0Z" fill="#000"/><path d="M62 18 82 30 62 42" fill="none" stroke="#fff" stroke-width="5"/></symbol></defs></svg>
+
+<!-- PAGE 0: WELCOME -->
+<section class="page on" id="p0">
+<header><button class="arrow r" data-go="1" aria-label="Next"><svg><use href="#ar"/></svg></button>
+<h1>Welcome to Schedule Maker</h1></header>
+<p class="sub">The first automated schedule<br>creator for NCSU students</p>
+<div class="row3">
+ <div class="panel"><h2>What year are you?</h2>
+  <button class="bar yr">Freshman</button><button class="bar yr">Sophomore</button><button class="bar yr">Junior</button><button class="bar yr">Senior</button></div>
+ <div class="panel"><h2>How many credit hours are you looking to take?</h2>
+  <label class="lb">At least:</label><input class="bar" id="mn" type="number" min="0" max="30" value="12">
+  <label class="lb">At most:</label><input class="bar" id="mx" type="number" min="0" max="30" value="18">
+  <h2 style="font-size:18px;margin:18px 0 8px">Also include sections that are:</h2>
+  <label class="chk"><input type="checkbox" id="incC"> Closed</label><label class="chk"><input type="checkbox" id="incR"> Reserved</label>
+  <label class="chk"><input type="checkbox" id="incA"> Study Abroad <small>(only study abroad classes)</small></label>
+  <p class="hint" style="margin:6px 0 0">Leave both unchecked for open sections only</p></div>
+ <div class="panel"><h2>Please select your major</h2>
+  <input class="bar" id="mj" placeholder="Search majors…" autocomplete="off"><div class="list" id="mjl"></div></div>
+</div></section>
+
+<!-- PAGE 1: CLASS SELECTION -->
+<section class="page" id="p1">
+<header><button class="arrow l" data-go="-1" aria-label="Back"><svg><use href="#ar"/></svg></button>
+<button class="arrow r" data-go="1" aria-label="Next"><svg><use href="#ar"/></svg></button><h1>Class Selection</h1></header>
+<div class="cols"><div>
+ <div class="panel" style="margin-bottom:28px"><h2>Add Classes by Search</h2>
+  <input class="bar" id="q" placeholder="e.g. CSC 116 or Calculus" autocomplete="off" style="margin:0"><div class="list" id="ql"></div></div>
+ <div class="panel"><h2>Selected Classes</h2><div id="sel"></div><div class="bar" id="tot" style="margin:14px 0 0"></div></div></div>
+ <div class="panel"><h2>Recommended Classes</h2><div id="rec"></div></div></div></section>
+
+<!-- PAGE 2: TIME SELECTION -->
+<section class="page" id="p2">
+<header><button class="arrow l" data-go="-1"><svg><use href="#ar"/></svg></button>
+<button class="arrow r" data-go="1"><svg><use href="#ar"/></svg></button><h1>Time Selections</h1></header>
+<div id="tt2"></div>
+<div class="tools"><button id="all">Select all</button><button id="none">Clear all</button>
+</div>
+<p class="foot">*Please select the time frames you want to have classes during* (click or drag)</p></section>
+
+<!-- PAGE 3: POTENTIAL SCHEDULES -->
+<section class="page" id="p3">
+<header><button class="arrow l" data-go="-1"><svg><use href="#ar"/></svg></button><h1>Potential Schedules</h1></header>
+<div id="msg"></div><div id="tt3"></div>
+<div class="nav"><button id="pv" aria-label="Previous schedule"><svg viewBox="0 0 100 60" style="transform:scaleX(-1)"><use href="#st"/></svg></button>
+<span id="cnt"></span><button id="nx" aria-label="Next schedule"><svg viewBox="0 0 100 60"><use href="#st"/></svg></button></div>
+<table id="det"></table></section>
+
+<script>
+/* ---------- constants & state ---------- */
+const $=s=>document.querySelector(s),DAYS='MTWRF',DN=['Monday','Tuesday','Wednesday','Thursday','Friday'];
+const T0=510,STEP=30,N=26,H=26;               // grid: 8:30 AM → 9:30 PM, 26 half-hour rows, 26px per row
+const TERM='Fall Semester';                    // sections.json = Fall 2026; change if scrapers change term
+const YM={Freshman:['First Year','Freshman Year'],Sophomore:['Second Year','Sophomore Year'],Junior:['Third Year','Junior Year'],Senior:['Fourth Year','Senior Year','Fifth Year']};
+const COL=['#e6b800','#2e86de','#27ae60','#c0392b','#8e44ad','#e67e22','#16a085','#d35400'];
+const S={year:'',major:'',sel:[],ok:DN.map(()=>Array(N).fill(false)),closed:false,reserved:false,abroad:false,res:[],i:0,page:0}; // S.ok[day][row]=true → user allows classes in that half hour
+let SEC,REQ,NAME={},HRS={},REC=[];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=m=>`${Math.floor(m/60)%12||12}:${String(m%60).padStart(2,'0')} ${m>=720?'PM':'AM'}`;
+const tm=s=>{const[,h,m,a]=/(\d+):(\d+) ([AP])M/.exec(s);return(+h%12+(a=='P'?12:0))*60+ +m};
+const toast=t=>{const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)};
+const total=()=>S.sel.reduce((a,c)=>a+(+c.h||0),0);
+
+/* ---------- load the two data files (same folder on GitHub Pages) ---------- */
+(async()=>{try{
+ const g=async f=>JSON.parse((await(await fetch(f)).text()).replace(/^\uFEFF/,''));
+ [SEC,REQ]=await Promise.all([g('sections.json'),g('requirements.json')]);init();$('#load').remove();
+}catch(e){$('#load').textContent='Could not load sections.json / requirements.json: '+e.message}})();
+
+/* "BUS/ST 350" → first cross-list prefix that exists in sections.json; returns e.g. "BUS 350" or null */
+function resolve(p){const m=/^([A-Z]+(?:\/[A-Z]+)*)\s+(\d{3}[A-Z]?)$/.exec(p.trim());
+ if(m)for(const x of m[1].split('/'))if(SEC[x+' '+m[2]])return x+' '+m[2];return null}
+/* requirement string → alternatives. "A or B" = choose one; "A & B" = take both. Unknown codes (GEP etc.) dropped */
+const alts=s=>s.split(/\s+or\s+/i).map(a=>a.split(/\s*&\s*/).map(resolve)).filter(a=>a.every(Boolean));
+
+function init(){
+ /* course names + default credit hours come from requirements (sections have neither) */
+ Object.values(REQ).flat().forEach(y=>y.courses.forEach(c=>{const k=resolve(c.code);
+  if(k&&!/ (or|&) /i.test(c.code)){NAME[k]=NAME[k]||c.name.replace(/\s+\d$/,'');const h=parseInt(c.hours);if(h)HRS[k]=HRS[k]||h}}));
+ /* page 0 */
+ document.querySelectorAll('.yr').forEach(b=>b.onclick=()=>{S.year=b.textContent;document.querySelectorAll('.yr').forEach(x=>x.classList.toggle('on',x==b))});
+ const majors=Object.keys(REQ).sort(),mj=$('#mj'),ml=$('#mjl');
+ const showM=all=>{const q=mj.value.toLowerCase();ml.innerHTML=majors.filter(m=>all||m.toLowerCase().includes(q)).slice(0,80).map(m=>`<div>${esc(m)}</div>`).join('')||'<div>No match</div>';ml.style.display='block'};
+ mj.onfocus=()=>showM(!!S.major);mj.oninput=()=>{S.major='';showM(false)};
+ ml.onclick=e=>{const m=e.target.textContent;if(REQ[m]){S.major=mj.value=m;ml.style.display='none'}};
+ /* page 1 */
+ const q=$('#q'),ql=$('#ql');
+ q.oninput=()=>{const r=find(q.value);ql.innerHTML=r.map(c=>`<div data-c="${c}">${c} <small>${esc(NAME[c]||'')}</small></div>`).join('');ql.style.display=r.length?'block':'none'};
+ q.onkeydown=e=>{if(e.key=='Enter'){const r=find(q.value);if(r[0])add([r[0]]);q.value='';ql.style.display='none'}};
+ ql.onclick=e=>{const c=e.target.closest('[data-c]');if(c){add([c.dataset.c]);q.value='';ql.style.display='none'}};
+ document.addEventListener('click',e=>{if(!e.target.closest('#mj,#mjl'))ml.style.display='none';if(!e.target.closest('#q,#ql'))ql.style.display='none'});
+ $('#rec').onclick=e=>{const b=e.target.closest('.opt');if(b)add(REC[b.dataset.r].a[b.dataset.a])};
+ $('#sel').onclick=e=>{const b=e.target.closest('button');if(b){S.sel=S.sel.filter(x=>x.c!=b.dataset.c);renderSel();renderRec()}};
+ $('#sel').oninput=e=>{S.sel.find(x=>x.c==e.target.dataset.c).h=e.target.value;renderTot()};
+ /* page 2 */
+ buildTT($('#tt2'),true);buildTT($('#tt3'),false);
+ $('#all').onclick=()=>fill(true);$('#none').onclick=()=>fill(false);$('#incC').onchange=e=>S.closed=e.target.checked;$('#incR').onchange=e=>S.reserved=e.target.checked;$('#incA').onchange=e=>S.abroad=e.target.checked;
+ $('#tt3').onclick=e=>{const b=e.target.closest('.cls');b?popup(b,e):$('#pop').style.display='none'};
+ document.addEventListener('click',e=>{if(!e.target.closest('.cls,#pop'))$('#pop').style.display='none'});
+ /* page 3 */
+ $('#pv').onclick=()=>{S.i--;drawSched()};$('#nx').onclick=()=>{S.i++;drawSched()};
+ document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(S.page+ +b.dataset.go));
+}
+
+/* ---------- page navigation with validation ---------- */
+function go(n){
+ const mn=+$('#mn').value,mx=+$('#mx').value;
+ if(n>S.page){
+  if(S.page==0){if(!S.year)return toast('Pick your year');if(!S.major)return toast('Pick your major from the list');
+   if(!(mx>0&&mn<=mx))return toast('Credit hours: "at least" must be ≤ "at most"');renderRec();renderSel()}
+  if(S.page==1&&!S.sel.length)return toast('Add at least one class');
+  if(S.page==2&&!S.ok.some(d=>d.some(Boolean)))return toast('Click or drag to mark the times you can have class');
+ }
+ S.page=n;document.querySelectorAll('.page').forEach((p,i)=>p.classList.toggle('on',i==n));scrollTo(0,0);
+ if(n==3){generate(mn,mx);S.i=0;drawSched()}
+}
+
+/* ---------- page 1: search / selected / recommended ---------- */
+function find(q){q=q.trim().toUpperCase();if(!q)return[];const nq=q.replace(/\s+/g,''),r=[];
+ for(const c in SEC){const nc=c.replace(' ','');let s=nc.startsWith(nq)?0:nc.includes(nq)?1:(NAME[c]||'').toUpperCase().includes(q)?2:9;if(s<9)r.push([s,c])}
+ return r.sort((a,b)=>a[0]-b[0]||a[1].localeCompare(b[1])).slice(0,8).map(x=>x[1])}
+function add(codes){codes.forEach(c=>{if(!S.sel.some(x=>x.c==c))S.sel.push({c,h:HRS[c]||3})});renderSel();renderRec()}
+function renderSel(){$('#sel').innerHTML=S.sel.map(c=>`<div class="bar sel"><b>${c.c}</b><span class="nm">${esc(NAME[c.c]||'')}</span><input type="number" min="0" max="20" value="${c.h}" data-c="${c.c}" title="credit hours"><button data-c="${c.c}" title="Remove">×</button></div>`).join('')||'<p class="hint">Nothing selected yet</p>';renderTot()}
+function renderTot(){const t=total(),mn=+$('#mn').value,mx=+$('#mx').value,low=t<mn;
+ const e=$('#tot');e.textContent=`Total Credit Hours: ${t}  ${low?`⚠ below your minimum of ${mn}`:t>mx?`(over ${mx}: some will be left off)`:'✓'}`;e.style.color=low?'#a00':'#060'}
+/* Semester timeline index = yearIndex*2 + (Fall?0:1). Student is "in" Fall of chosen year (sections.json is a Fall term).
+   Show that semester + previous + next; no previous (1st-sem freshman) → next 2; no next (last sem of plan) → previous 2. */
+const YI={'First Year':0,'Freshman Year':0,'Second Year':1,'Sophomore Year':1,'Third Year':2,'Junior Year':2,'Fourth Year':3,'Senior Year':3,'Fifth Year':4};
+const GL={'-2':'Two semesters back','-1':'Previous semester','0':'This semester','1':'Next semester','2':'Two semesters ahead'};
+function renderRec(){
+ REC=[];const seen=new Set(),plan=REQ[S.major]||[],idx=y=>(YI[y.year]??-9)*2+(y.semester==TERM?0:y.semester=='Spring Semester'?1:-99);
+ const cur=['Freshman','Sophomore','Junior','Senior'].indexOf(S.year)*2,last=Math.max(...plan.map(idx),cur);
+ let offs=[0,1,-1];if(cur<=0)offs=[0,1,2];else if(cur>=last)offs=[0,-1,-2];
+ offs.forEach(o=>plan.filter(y=>idx(y)==cur+o).forEach(y=>y.courses.forEach(c=>{
+  const a=alts(c.code),k=a.flat().join();
+  if(!a.length||seen.has(k)||a.some(x=>x.every(z=>S.sel.some(s=>s.c==z))))return;seen.add(k);REC.push({g:GL[o],a})})));
+ let lastG='';
+ $('#rec').innerHTML=REC.map((r,i)=>(r.g!=lastG?`<div class="hd">${lastG=r.g}</div>`:'')+`<div class="bar" style="font-size:15px">${r.a.map((x,j)=>`<button class="opt" data-r="${i}" data-a="${j}" title="${esc(x.map(z=>NAME[z]||z).join(' + '))}">${x.join(' + ')}</button>`).join(' or ')}</div>`).join('')
+  ||'<p class="hint">No more recommendations with sections this term</p>'}
+
+/* ---------- timetable (shared) ---------- */
+function buildTT(box,pick){
+ box.innerHTML=`<div class="tt"><div></div><div class="gh">${DN.map(d=>`<div>${d}</div>`).join('')}</div>
+ <div class="tl" style="height:${N*H+16}px">${Array.from({length:Math.ceil(N/2)},(_,k)=>`<span style="top:${k*2*H+8}px">${fmt(T0+k*60)}</span>`).join('')}</div>
+ <div class="gb">${DN.map((_,d)=>`<div class="col ${pick?'':'s'}" data-d="${d}" style="height:${N*H}px">${pick?Array.from({length:N},(_,k)=>`<div class="cell" data-d="${d}" data-k="${k}" style="height:${H}px"></div>`).join(''):''}</div>`).join('')}</div></div>`;
+ if(!pick)return;
+ let paint=null;const set=c=>{S.ok[c.dataset.d][c.dataset.k]=paint;c.classList.toggle('on',paint)};
+ box.onpointerdown=e=>{const c=e.target.closest('.cell');if(c){paint=!S.ok[c.dataset.d][c.dataset.k];set(c);e.preventDefault()}};
+ addEventListener('pointermove',e=>{if(paint===null)return;const c=document.elementFromPoint(e.clientX,e.clientY)?.closest('.cell');if(c)set(c)});
+ addEventListener('pointerup',()=>paint=null);
+}
+function fill(v){S.ok.forEach(d=>d.fill(v));document.querySelectorAll('.cell').forEach(c=>c.classList.toggle('on',v))}
+
+/* ---------- scheduling engine ---------- */
+/* Parse a section once: day indexes, start/end minutes, date range (for 8-week half-term classes) */
+function prep(s){if(s._p)return s._p;const p={days:[],timed:false,d0:0,d1:1e9};
+ const m=/(\d+:\d+ [AP]M)\s*-\s*(\d+:\d+ [AP]M)/.exec(s.time||'');
+ if(m&&s.days){p.s=tm(m[1]);p.e=tm(m[2]);p.days=[...new Set([...s.days].map(c=>DAYS.indexOf(c)).filter(i=>i>=0))];p.timed=p.days.length>0}
+ const d=/(\d\d)\/(\d\d)\/(\d\d)\s*-\s*(\d\d)\/(\d\d)\/(\d\d)/.exec(s.dates||'');
+ if(d){p.d0=+d[3]*1e4+ +d[1]*100+ +d[2];p.d1=+d[6]*1e4+ +d[4]*100+ +d[5]}
+ return s._p=p}
+/* Two sections clash if they share a day, overlap in time AND their date ranges overlap */
+function clash(a,b){const x=prep(a),y=prep(b);
+ return x.timed&&y.timed&&x.d0<=y.d1&&y.d0<=x.d1&&x.days.some(d=>y.days.includes(d))&&x.s<y.e&&y.s<x.e}
+/* Does every half-hour the section touches lie inside the user's green cells? (untimed/TBD always fits) */
+function fits(s){const p=prep(s);if(!p.timed)return true;
+ if(p.s<T0||p.e>T0+N*STEP)return false;
+ const a=Math.max(0,Math.floor((p.s-T0)/STEP)),b=Math.min(N-1,Math.ceil((p.e-T0)/STEP)-1);
+ return p.days.every(d=>{for(let k=a;k<=b;k++)if(!S.ok[d][k])return false;return true})}
+const rng=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+
+const isAbroad=s=>/study abroad/i.test(s.location||'');
+const openOK=s=>isAbroad(s)==S.abroad&&(/^Open/.test(s.availability)||(S.closed&&/^Closed/.test(s.availability))||(S.reserved&&/^Reserved/.test(s.availability)));
+function generate(mn,mx){
+ S.res=[];S.msg='';const t=total();
+ if(t<mn){S.msg=`Selected classes total ${t} credit hours, below your minimum of ${mn}. Go back and add classes.`;return}
+ /* one "slot" per (course, component): a course needs one Lec AND one Lab/Pro/Rec… if it has them.
+    candidates = allowed-availability sections inside green times, de-duplicated by days/time/dates/instructor */
+ const info={},bad=[];
+ for(const {c,h} of S.sel){const g={},slots=[];(SEC[c]||[]).forEach(s=>(g[s.component]??=[]).push(s));let ok=true;
+  for(const comp in g){const seen=new Set(),cand=g[comp].filter(s=>{if(!openOK(s)||!fits(s))return false;
+    const k=[s.days,s.time,s.dates,s.instructor].join('|');if(seen.has(k))return false;seen.add(k);return true});
+   if(!cand.length){ok=false;break}slots.push({c,cand})}
+  if(ok)info[c]={h:+h||0,slots};else bad.push(c)}
+ /* choose which course sets to attempt */
+ let sets=[];const feas=S.sel.filter(x=>info[x.c]);
+ if(t<=mx){ // everything fits the credit cap → must schedule every class
+  if(bad.length){S.msg=`${bad[0]} has no sections inside your selected times/availability. Widen the time grid or include closed/reserved sections on the welcome page.`;return}
+  sets=[feas.map(x=>x.c)];
+ }else{ // over the cap → randomly build maximal subsets that land in [mn,mx]; the rest are "left off"
+  const r=rng(7),seen=new Set(),tot=x=>x.reduce((a,c)=>a+info[c].h,0);
+  for(let n=0;n<400;n++){const o=feas.map(x=>[r(),x.c]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]),sub=[];let s=0;
+   for(const c of o)if(s+info[c].h<=mx){sub.push(c);s+=info[c].h}
+   const k=sub.slice().sort().join();if(s>=mn&&!seen.has(k)){seen.add(k);sets.push(sub)}}
+  sets.sort((a,b)=>tot(b)-tot(a));sets=sets.slice(0,60);
+  if(!sets.length){S.msg=`Your classes can't be combined into ${mn}–${mx} credit hours with the current times/availability.`;return}
+ }
+ /* randomized backtracking, many restarts → varied schedules instead of near-clones */
+ const found=new Map(),per=Math.max(12,Math.ceil(1500/sets.length));
+ for(const set of sets){
+  const order=set.flatMap(c=>info[c].slots).sort((a,b)=>a.cand.length-b.cand.length); // most-constrained first
+  for(let seed=1;seed<=per;seed++){
+   const r=rng(seed*31+set.length),pick=[];let nodes=0;
+   const rec=i=>{if(i==order.length)return true;
+    const cs=order[i].cand.map(x=>[r(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
+    for(const s of cs){if(++nodes>4000)return false;if(pick.some(q=>clash(q.s,s)))continue;
+     pick.push({c:order[i].c,s});if(rec(i+1))return true;pick.pop()}return false};
+   if(rec(0)){const k=pick.map(p=>p.s.class_num).sort().join();
+    if(!found.has(k))found.set(k,{pick:pick.slice(),drop:S.sel.map(x=>x.c).filter(c=>!set.includes(c)),cr:set.reduce((a,c)=>a+info[c].h,0)})}}}
+ /* score: more credits, fewer campus days, fewer idle gaps → better; keep best 30 */
+ const score=o=>{let sc=-o.cr*25;for(let d=0;d<5;d++){const m=o.pick.filter(x=>prep(x.s).days.includes(d)).map(x=>prep(x.s)).sort((a,b)=>a.s-b.s);
+   if(m.length){sc+=60;for(let i=1;i<m.length;i++)sc+=Math.max(0,m[i].s-m[i-1].e)}}return sc};
+ S.res=[...found.values()].sort((a,b)=>score(a)-score(b)).slice(0,30);
+ if(!S.res.length)S.msg='No conflict-free schedule exists for these classes and times. Try widening the time grid, dropping a class, or including closed/reserved sections.';
+}
+
+const CT={Lec:'Lecture',Lab:'Laboratory',Rec:'Recitation',Sem:'Seminar',Dis:'Discussion',Ind:'Independent Study',Res:'Research',Stu:'Studio',Pra:'Practicum',Int:'Internship',The:'Thesis',Fie:'Fieldwork',Cli:'Clinical'};
+/* popup with full course/section info; opened by clicking a class block */
+function popup(b,e){const s=b._s,c=b._c,pop=$('#pop');
+ pop.innerHTML=`<button class="x" onclick="this.parentNode.style.display='none'">×</button><h3>${c}${NAME[c]?' – '+esc(NAME[c]):''}</h3>
+ <p><b>Type:</b> ${CT[s.component]||esc(s.component)} &nbsp; <b>Section:</b> ${esc(s.section)} &nbsp; <b>Class #:</b> ${esc(s.class_num)}</p>
+ <p><b>Days:</b> ${esc(s.days||'TBD')}</p><p><b>Time:</b> ${esc(s.time)}</p><p><b>Dates:</b> ${esc(s.dates)}</p>
+ <p><b>Instructor:</b> ${esc(s.instructor||'Staff')}</p><p><b>Location:</b> ${esc(s.location)}</p><p><b>Seats:</b> ${esc(s.availability)}</p>
+ <p><b>Description:</b> ${esc(s.topic||s.description||NAME[c]||'Not available in the data')}</p>`;
+ pop.style.display='block';const w=pop.offsetWidth,h=pop.offsetHeight;
+ pop.style.left=Math.max(8,Math.min(e.clientX+12,innerWidth-w-8))+'px';pop.style.top=Math.max(8,Math.min(e.clientY+12,innerHeight-h-8))+'px'}
+
+/* ---------- page 3: render one schedule ---------- */
+function drawSched(){
+ $('#pop').style.display='none';const r=S.res,cols=document.querySelectorAll('#tt3 .col');cols.forEach(c=>c.innerHTML='');
+ $('#msg').textContent=S.msg;$('#det').innerHTML='';
+ $('#pv').disabled=S.i<=0;$('#nx').disabled=S.i>=r.length-1;
+ $('#cnt').textContent=r.length?`Schedule ${S.i+1} of ${r.length}`:'0 schedules';
+ if(!r.length)return;
+ const codes=[...new Set(S.sel.map(x=>x.c))];let rows='<tr><th>Class</th><th>Type</th><th>Sec</th><th>Class #</th><th>Days</th><th>Time</th><th>Instructor</th><th>Location</th></tr>';
+ const cur=r[S.i];$('#cnt').textContent+=` · ${cur.cr} credit hrs`+(cur.drop.length?` · left off: ${cur.drop.join(', ')}`:'');
+ cur.pick.forEach(({c,s})=>{const p=prep(s),col=COL[codes.indexOf(c)%COL.length],prof=(s.instructor||'Staff').split(/,\s+/)[0].split(',')[0];
+  p.days.forEach(d=>{const b=document.createElement('div');b.className='cls';b.style.cssText=`top:${(p.s-T0)/STEP*H+1}px;height:${(p.e-p.s)/STEP*H-2}px;border-left-color:${col}`;
+   b._s=s;b._c=c;b.title='Click for details';
+   b.innerHTML=`<b>${c}</b>${esc(s.time.replace(/ - /,' – '))}<br>${esc(prof)}`;cols[d].appendChild(b)});
+  rows+=`<tr><td style="border-left:8px solid ${col}">${c}</td><td>${s.component}</td><td>${s.section}</td><td>${s.class_num}</td><td>${s.days||'TBD'}</td><td>${p.timed?s.time:'TBD'}</td><td>${esc(s.instructor)}</td><td>${esc(s.location)}</td></tr>`});
+ $('#det').innerHTML=rows;
+}
+</script></body></html>
