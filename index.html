@@ -58,8 +58,9 @@ label.lb{color:#f2f2f2;display:block;margin:0 0 4px}
 .nav button{background:none;border:0;cursor:pointer;width:90px}.nav svg{width:100%}
 .nav button:disabled{opacity:.25;cursor:default}
 #msg{text-align:center;margin:14px auto;max-width:800px;font-size:18px}
-#det{max-width:1150px;margin:16px auto 0;font-size:14px;color:#111;border-collapse:collapse;width:100%}
-#det td,#det th{border:1px solid #000;padding:3px 6px;background:rgba(255,255,255,.85);text-align:left}
+#det{max-width:1150px;margin:16px auto 0;font-size:14px;color:#111;border-collapse:separate;border-spacing:0;width:100%;border-left:1px solid #000;border-top:1px solid #000}
+#det td,#det th{border-right:1px solid #000;border-bottom:1px solid #000;padding:3px 6px;background:rgba(255,255,255,.9);text-align:left}
+#det td:first-child,#det th:first-child{padding-left:14px}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#000;color:#fff;padding:8px 18px;display:none;z-index:9}
 #load{position:fixed;inset:0;background:var(--red);display:flex;align-items:center;justify-content:center;font-size:26px;z-index:20}
 </style></head><body>
@@ -210,7 +211,7 @@ function renderRec(){
 
 /* ---------- timetable (shared) ---------- */
 function buildTT(box,pick){
- box.innerHTML=`<div class="tt"><div></div><div class="gh">${DN.map(d=>`<div>${d}</div>`).join('')}</div>${pick?'':'<div></div><div class="tbd" id="tbdbar"></div>'}
+ box.innerHTML=`<div class="tt"><div></div><div class="gh">${DN.map(d=>`<div>${d}</div>`).join('')}</div>${pick?'':'<div class="tbd" id="tbdbar"></div>'}
  <div class="tl" style="height:${N*H+16}px">${Array.from({length:Math.ceil(N/2)},(_,k)=>`<span style="top:${k*2*H+8}px">${fmt(T0+k*60)}</span>`).join('')}</div>
  <div class="gb">${DN.map((_,d)=>`<div class="col ${pick?'':'s'}" data-d="${d}" style="height:${N*H}px">${pick?Array.from({length:N},(_,k)=>`<div class="cell" data-d="${d}" data-k="${k}" style="height:${H}px"></div>`).join(''):''}</div>`).join('')}</div></div>`;
  if(!pick)return;
@@ -310,7 +311,7 @@ function drawSched(){
   p.days.forEach(d=>{const b=document.createElement('div');b.className='cls';b.style.cssText=`top:${(p.s-T0)/STEP*H+1}px;height:${(p.e-p.s)/STEP*H-2}px;border-left-color:${col}`;
    b._s=s;b._c=c;b.title='Click for details';
    b.innerHTML=`<b>${c}</b>${esc(s.time.replace(/ - /,' – '))}<br>${esc(prof)}`;cols[d].appendChild(b)});
-  rows+=`<tr><td style="border-left:8px solid ${col}">${c}</td><td>${s.component}</td><td>${s.section}</td><td>${s.class_num}</td><td>${s.days||'TBD'}</td><td>${p.timed?s.time:'TBD'}</td><td>${esc(s.instructor)}</td><td>${esc(s.location)}</td></tr>`});
+  rows+=`<tr><td style="box-shadow:inset 8px 0 0 ${col}">${c}</td><td>${s.component}</td><td>${s.section}</td><td>${s.class_num}</td><td>${s.days||'TBD'}</td><td>${p.timed?s.time:'TBD'}</td><td>${esc(s.instructor)}</td><td>${esc(s.location)}</td></tr>`});
  $('#det').innerHTML=rows;
 }
 </script></body></html>
