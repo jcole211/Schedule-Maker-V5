@@ -59,7 +59,7 @@ label.lb{color:#f2f2f2;display:block;margin:0 0 4px}
 .chip{background:#fff;color:#000;border:2px solid #000;border-left-width:8px;padding:2px 8px;font-weight:bold;font-size:13px;cursor:pointer}
 .foot{flex:none;text-align:center;margin:6px 0 2px;font-size:clamp(12px,2vh,22px)}
 .tools{flex:none;text-align:center}.tools button{font:inherit;border:3px solid #000;background:#fff;padding:2px 12px;margin:4px 6px;cursor:pointer}
-#msg{flex:none;text-align:center;margin:0 auto 6px;max-width:800px}#msg:empty{display:none}
+#msg{flex:none;text-align:center;margin:0 auto 6px;max-width:800px}#msg:empty{display:none}.lnk{font:inherit;border:3px solid #000;background:#fff;padding:1px 10px;margin:4px 0 0 8px;cursor:pointer}
 .sched{flex:1;min-height:0;display:flex;gap:18px}
 .dw{flex:0 0 430px;overflow:auto;min-height:0}
 #det{font-size:12px;color:#111;border-collapse:separate;border-spacing:0;width:100%;table-layout:auto;border-left:1px solid #000;border-top:1px solid #000}
@@ -192,6 +192,7 @@ function init(){
  $('#tt3').onclick=e=>{const b=e.target.closest('.cls,.chip');b?popup(b,e):$('#pop').style.display='none'};
  document.addEventListener('click',e=>{if(!e.target.closest('.cls,.chip,#pop'))$('#pop').style.display='none'});
  /* page 3 */
+ $('#msg').onclick=e=>{if(e.target.id=='showbad'){S.showBad=!S.showBad;drawSched()}};
  $('#pv').onclick=()=>{S.i--;drawSched()};$('#nx').onclick=()=>{S.i++;drawSched()};
  document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(S.page+ +b.dataset.go));
 }
@@ -266,7 +267,7 @@ const rng=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.i
 const isAbroad=s=>/study abroad/i.test(s.location||'');
 const openOK=s=>isAbroad(s)==S.abroad&&(/^Open/.test(s.availability)||(S.closed&&/^Closed/.test(s.availability))||(S.reserved&&/^Reserved/.test(s.availability)));
 function generate(mn,mx){
- S.res=[];S.msg='';const t=total();
+ S.res=[];S.msg='';S.bad=[];S.showBad=false;const t=total();
  if(t<mn){S.msg=`Selected classes total ${t} credit hours, below your minimum of ${mn}. Go back and add classes.`;return}
  /* one "slot" per (course, component): a course needs one Lec AND one Lab/Pro/Rec… if it has them.
     candidates = allowed-availability sections inside green times, de-duplicated by days/time/dates/instructor */
@@ -279,7 +280,7 @@ function generate(mn,mx){
  /* choose which course sets to attempt */
  let sets=[];const feas=S.sel.filter(x=>info[x.c]);
  if(t<=mx){ // everything fits the credit cap → must schedule every class
-  if(bad.length){S.msg=`${bad[0]} has no sections inside your selected times/availability. Widen the time grid or include closed/reserved sections on the welcome page.`;return}
+  if(bad.length){S.msg=`${bad.join(', ')} ${bad.length>1?'have':'has'} no sections inside your selected times/availability.`;S.bad=bad;return}
   sets=[feas.map(x=>x.c)];
  }else{ // over the cap → randomly build maximal subsets that land in [mn,mx]; the rest are "left off"
   const r=rng(7),seen=new Set(),tot=x=>x.reduce((a,c)=>a+info[c].h,0);
@@ -308,6 +309,21 @@ function generate(mn,mx){
  if(!S.res.length)S.msg='No conflict-free schedule exists for these classes and times. Try widening the time grid, dropping a class, or including closed/reserved sections.';
 }
 
+/* "Show when those sections meet": green = your allowed times; boxes = sections of the classes that don't fit */
+function ghost(cols){
+ S.ok.forEach((d,i)=>{let k=0;while(k<N){if(!d[k]){k++;continue}let j=k;while(j<N&&d[j])j++;
+  const a=document.createElement('div');a.style.cssText=`position:absolute;left:0;right:0;top:${k/N*100}%;height:${(j-k)/N*100}%;background:rgba(78,143,82,.6)`;cols[i].appendChild(a);k=j}});
+ const seen=new Set(),list=[];
+ S.bad.forEach(c=>(SEC[c]||[]).forEach(s=>{if(!openOK(s))return;const k=[c,s.component,s.days,s.time,s.dates,s.instructor].join('|');if(!seen.has(k)){seen.add(k);list.push({c,s})}}));
+ for(let d=0;d<5;d++){const it=list.filter(x=>prep(x.s).days.includes(d)&&prep(x.s).s>=T0&&prep(x.s).e<=T0+N*STEP).sort((a,b)=>prep(a.s).s-prep(b.s).s),ends=[];
+  it.forEach(x=>{const p=prep(x.s);let l=ends.findIndex(e=>e<=p.s);if(l<0)l=ends.length;ends[l]=p.e;x.l=l});
+  it.forEach(x=>{const p=prep(x.s),n=ends.length,b=document.createElement('div');b.className='cls';
+   b.style.cssText=`top:${(p.s-T0)/(N*STEP)*100}%;height:calc(${(p.e-p.s)/(N*STEP)*100}% - 2px);left:calc(${x.l/n*100}% + 2px);width:calc(${100/n}% - 4px);right:auto;border-left-color:${COL[S.bad.indexOf(x.c)%COL.length]}`;
+   b._s=x.s;b._c=x.c;b.title='Click for details';b.innerHTML=`<b>${x.c}</b><span class="tf">${esc(x.s.time.replace(/ - /,' – '))}</span><span class="ts">${esc(x.s.time.replace(/ ?[AP]M/g,'').replace(/ - /,'–'))}</span>`;cols[d].appendChild(b)})}
+ $('#cnt').textContent='Green = your times · boxes = sections that don\'t fit';
+ $('#det').innerHTML='<tr><th>Class</th><th>Sec</th><th>Class #</th><th>Time</th><th>Instructor</th></tr>'+list.map(({c,s})=>{const p=prep(s);
+  return `<tr><td style="box-shadow:inset 8px 0 0 ${COL[S.bad.indexOf(c)%COL.length]}">${c}</td><td>${s.component} ${s.section}</td><td>${s.class_num}</td><td>${p.timed?s.days+' '+esc(s.time.replace(/ - /,'–'))+((p.s<T0||p.e>T0+N*STEP)?' (off grid)':''):'TBD'}</td><td>${esc(s.instructor||'Staff')}</td></tr>`}).join('')}
+
 const CT={Lec:'Lecture',Lab:'Laboratory',Rec:'Recitation',Sem:'Seminar',Dis:'Discussion',Ind:'Independent Study',Res:'Research',Stu:'Studio',Pra:'Practicum',Int:'Internship',The:'Thesis',Fie:'Fieldwork',Cli:'Clinical'};
 /* popup with full course/section info; opened by clicking a class block */
 function popup(b,e){const s=b._s,c=b._c,pop=$('#pop');
@@ -322,10 +338,10 @@ function popup(b,e){const s=b._s,c=b._c,pop=$('#pop');
 /* ---------- page 3: render one schedule ---------- */
 function drawSched(){
  $('#pop').style.display='none';const r=S.res,cols=document.querySelectorAll('#tt3 .col');cols.forEach(c=>c.innerHTML='');const bar=$('#tbdbar');bar.innerHTML='';bar.style.display='none';
- $('#msg').textContent=S.msg;$('#det').innerHTML='';
+ $('#msg').innerHTML=esc(S.msg)+((S.bad||[]).length?` <button id="showbad" class="lnk">${S.showBad?'Hide':'Show'} when those sections meet</button>`:'');$('#det').innerHTML='';
  $('#pv').disabled=S.i<=0;$('#nx').disabled=S.i>=r.length-1;
  $('#cnt').textContent=r.length?`Schedule ${S.i+1} of ${r.length}`:'0 schedules';
- if(!r.length)return;
+ if(!r.length){if(S.showBad)ghost(cols);return}
  const codes=[...new Set(S.sel.map(x=>x.c))];let rows='<tr><th>Class</th><th>Sec</th><th>Class #</th><th>Time</th><th>Instructor</th></tr>';
  const cur=r[S.i];$('#cnt').textContent+=` · ${cur.cr} credit hrs`+(cur.drop.length?` · left off: ${cur.drop.join(', ')}`:'');
  cur.pick.forEach(({c,s})=>{const p=prep(s),col=COL[codes.indexOf(c)%COL.length],prof=(s.instructor||'Staff').split(/,\s+/)[0].split(',')[0];
