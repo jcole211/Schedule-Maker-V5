@@ -62,6 +62,7 @@ label.lb{color:#f2f2f2;display:block;margin:0 0 4px}
 #msg{flex:none;text-align:center;margin:0 auto 6px;max-width:800px}#msg:empty{display:none}.lnk{font:inherit;border:3px solid #000;background:#fff;padding:1px 10px;margin:4px 0 0 8px;cursor:pointer}
 .sched{flex:1;min-height:0;display:flex;gap:18px}
 .dw{flex:0 0 430px;overflow:auto;min-height:0}
+#det:empty{display:none}
 #det{font-size:12px;color:#111;border-collapse:separate;border-spacing:0;width:100%;table-layout:auto;border-left:1px solid #000;border-top:1px solid #000}
 #det td,#det th{border-right:1px solid #000;border-bottom:1px solid #000;padding:3px 6px;background:rgba(255,255,255,.9);text-align:left;word-break:break-word}
 #det td:first-child,#det th:first-child{padding-left:14px}
@@ -314,16 +315,18 @@ function generate(mn,mx){
 function ghost(cols){
  S.ok.forEach((d,i)=>{let k=0;while(k<N){if(!d[k]){k++;continue}let j=k;while(j<N&&d[j])j++;
   const a=document.createElement('div');a.style.cssText=`position:absolute;left:0;right:0;top:${k/N*100}%;height:${(j-k)/N*100}%;background:rgba(78,143,82,.6)`;cols[i].appendChild(a);k=j}});
- const seen=new Set(),list=[];
+ const PAL=['#bfe0ff','#ffd9a6','#c9f2b8','#f4c6f0','#fff08a','#cfcff5'],seen=new Set(),list=[];
  S.bad.forEach(c=>(SEC[c]||[]).forEach(s=>{if(!openOK(s))return;const k=[c,s.component,s.days,s.time,s.dates,s.instructor].join('|');if(!seen.has(k)){seen.add(k);list.push({c,s})}}));
+ const comps=[...new Set(list.map(x=>x.s.component))],CB=c=>PAL[comps.indexOf(c)%PAL.length],bar=$('#tbdbar');
+ bar.style.display='flex';bar.innerHTML='<span>Take one of each type:</span>'+comps.map(c=>`<span class="chip" style="background:${CB(c)};cursor:default">${CT[c]||c}</span>`).join('');
  for(let d=0;d<5;d++){const it=list.filter(x=>prep(x.s).days.includes(d)&&prep(x.s).s>=T0&&prep(x.s).e<=T0+N*STEP).sort((a,b)=>prep(a.s).s-prep(b.s).s),ends=[];
   it.forEach(x=>{const p=prep(x.s);let l=ends.findIndex(e=>e<=p.s);if(l<0)l=ends.length;ends[l]=p.e;x.l=l});
   it.forEach(x=>{const p=prep(x.s),n=ends.length,b=document.createElement('div');b.className='cls';
-   b.style.cssText=`top:${(p.s-T0)/(N*STEP)*100}%;height:calc(${(p.e-p.s)/(N*STEP)*100}% - 2px);left:calc(${x.l/n*100}% + 2px);width:calc(${100/n}% - 4px);right:auto;border-left-color:${COL[S.bad.indexOf(x.c)%COL.length]}`;
-   b._s=x.s;b._c=x.c;b.title='Click for details';b.innerHTML=`<b>${x.c}</b><span class="tf">${esc(x.s.time.replace(/ - /,' – '))}</span><span class="ts">${esc(x.s.time.replace(/ ?[AP]M/g,'').replace(/ - /,'–'))}</span>`;cols[d].appendChild(b)})}
+   b.style.cssText=`top:${(p.s-T0)/(N*STEP)*100}%;height:calc(${(p.e-p.s)/(N*STEP)*100}% - 2px);left:calc(${x.l/n*100}% + 2px);width:calc(${100/n}% - 4px);right:auto;background:${CB(x.s.component)};border-left-color:${COL[S.bad.indexOf(x.c)%COL.length]}`;
+   b._s=x.s;b._c=x.c;b.title='Click for details';b.innerHTML=`<b>${x.c}</b><span class="tf">${esc(x.s.time.replace(/ - /,' – '))}</span><span class="ts">${esc(x.s.time.replace(/ ?[AP]M/g,'').replace(/ - /,'–'))}</span><div>${CT[x.s.component]||x.s.component}</div>`;cols[d].appendChild(b)})}
  $('#cnt').textContent='Green = your times · boxes = sections that don\'t fit';
  $('#det').innerHTML='<tr><th>Class</th><th>Sec</th><th>Class #</th><th>Time</th><th>Instructor</th></tr>'+list.map(({c,s})=>{const p=prep(s);
-  return `<tr><td style="box-shadow:inset 8px 0 0 ${COL[S.bad.indexOf(c)%COL.length]}">${c}</td><td>${s.component} ${s.section}</td><td>${s.class_num}</td><td>${p.timed?s.days+' '+esc(s.time.replace(/ - /,'–'))+((p.s<T0||p.e>T0+N*STEP)?' (off grid)':''):'TBD'}</td><td>${esc(s.instructor||'Staff')}</td></tr>`}).join('')}
+  return `<tr><td style="box-shadow:inset 8px 0 0 ${COL[S.bad.indexOf(c)%COL.length]}">${c}</td><td style="background:${CB(s.component)}">${CT[s.component]||s.component} ${s.section}</td><td>${s.class_num}</td><td>${p.timed?s.days+' '+esc(s.time.replace(/ - /,'–'))+((p.s<T0||p.e>T0+N*STEP)?' (off grid)':''):'TBD'}</td><td>${esc(s.instructor||'Staff')}</td></tr>`}).join('')}
 
 const CT={Lec:'Lecture',Lab:'Laboratory',Rec:'Recitation',Sem:'Seminar',Dis:'Discussion',Ind:'Independent Study',Res:'Research',Stu:'Studio',Pra:'Practicum',Int:'Internship',The:'Thesis',Fie:'Fieldwork',Cli:'Clinical'};
 /* popup with full course/section info; opened by clicking a class block */
