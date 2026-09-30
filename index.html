@@ -47,6 +47,8 @@ label.lb{color:#f2f2f2;display:block;margin:0 0 4px}
 .col{background:var(--gray);position:relative;min-width:0}
 .cell{border-bottom:1px solid rgba(0,0,0,.4);cursor:pointer}.cell.on{background:var(--green)}
 .col.s{background:repeating-linear-gradient(#4d4d4d 0 51px,#333 51px 52px)}
+.tbd{grid-column:2;margin:0 8px 8px;background:#000;padding:6px;display:none;flex-wrap:wrap;gap:6px;align-items:center;color:#fff;font-size:14px}
+.chip{background:#fff;color:#000;border:2px solid #000;border-left-width:8px;padding:2px 8px;font-weight:bold;font-size:14px;cursor:pointer}
 .cls{cursor:pointer;position:absolute;left:3px;right:3px;background:#fff;border:2px solid #000;border-left-width:8px;overflow:hidden;font-size:13px;line-height:1.15;text-align:center;padding:1px 2px;color:#000;font-weight:bold}
 .cls b{display:block;font-size:14px}
 .foot{text-align:center;margin:18px 0 6px;font-size:clamp(14px,2vw,24px)}
@@ -163,8 +165,8 @@ function init(){
  /* page 2 */
  buildTT($('#tt2'),true);buildTT($('#tt3'),false);
  $('#all').onclick=()=>fill(true);$('#none').onclick=()=>fill(false);$('#incC').onchange=e=>S.closed=e.target.checked;$('#incR').onchange=e=>S.reserved=e.target.checked;$('#incA').onchange=e=>S.abroad=e.target.checked;
- $('#tt3').onclick=e=>{const b=e.target.closest('.cls');b?popup(b,e):$('#pop').style.display='none'};
- document.addEventListener('click',e=>{if(!e.target.closest('.cls,#pop'))$('#pop').style.display='none'});
+ $('#tt3').onclick=e=>{const b=e.target.closest('.cls,.chip');b?popup(b,e):$('#pop').style.display='none'};
+ document.addEventListener('click',e=>{if(!e.target.closest('.cls,.chip,#pop'))$('#pop').style.display='none'});
  /* page 3 */
  $('#pv').onclick=()=>{S.i--;drawSched()};$('#nx').onclick=()=>{S.i++;drawSched()};
  document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(S.page+ +b.dataset.go));
@@ -208,7 +210,7 @@ function renderRec(){
 
 /* ---------- timetable (shared) ---------- */
 function buildTT(box,pick){
- box.innerHTML=`<div class="tt"><div></div><div class="gh">${DN.map(d=>`<div>${d}</div>`).join('')}</div>
+ box.innerHTML=`<div class="tt"><div></div><div class="gh">${DN.map(d=>`<div>${d}</div>`).join('')}</div>${pick?'':'<div></div><div class="tbd" id="tbdbar"></div>'}
  <div class="tl" style="height:${N*H+16}px">${Array.from({length:Math.ceil(N/2)},(_,k)=>`<span style="top:${k*2*H+8}px">${fmt(T0+k*60)}</span>`).join('')}</div>
  <div class="gb">${DN.map((_,d)=>`<div class="col ${pick?'':'s'}" data-d="${d}" style="height:${N*H}px">${pick?Array.from({length:N},(_,k)=>`<div class="cell" data-d="${d}" data-k="${k}" style="height:${H}px"></div>`).join(''):''}</div>`).join('')}</div></div>`;
  if(!pick)return;
@@ -295,7 +297,7 @@ function popup(b,e){const s=b._s,c=b._c,pop=$('#pop');
 
 /* ---------- page 3: render one schedule ---------- */
 function drawSched(){
- $('#pop').style.display='none';const r=S.res,cols=document.querySelectorAll('#tt3 .col');cols.forEach(c=>c.innerHTML='');
+ $('#pop').style.display='none';const r=S.res,cols=document.querySelectorAll('#tt3 .col');cols.forEach(c=>c.innerHTML='');const bar=$('#tbdbar');bar.innerHTML='';bar.style.display='none';
  $('#msg').textContent=S.msg;$('#det').innerHTML='';
  $('#pv').disabled=S.i<=0;$('#nx').disabled=S.i>=r.length-1;
  $('#cnt').textContent=r.length?`Schedule ${S.i+1} of ${r.length}`:'0 schedules';
@@ -303,6 +305,8 @@ function drawSched(){
  const codes=[...new Set(S.sel.map(x=>x.c))];let rows='<tr><th>Class</th><th>Type</th><th>Sec</th><th>Class #</th><th>Days</th><th>Time</th><th>Instructor</th><th>Location</th></tr>';
  const cur=r[S.i];$('#cnt').textContent+=` · ${cur.cr} credit hrs`+(cur.drop.length?` · left off: ${cur.drop.join(', ')}`:'');
  cur.pick.forEach(({c,s})=>{const p=prep(s),col=COL[codes.indexOf(c)%COL.length],prof=(s.instructor||'Staff').split(/,\s+/)[0].split(',')[0];
+  if(!p.timed){if(!bar.children.length)bar.innerHTML='<span>No set meeting time:</span>';bar.style.display='flex';
+   const b=document.createElement('div');b.className='chip';b.style.borderLeftColor=col;b.textContent=`${c} ${s.component} ${s.section}`;b._s=s;b._c=c;b.title='Click for details';bar.appendChild(b)}
   p.days.forEach(d=>{const b=document.createElement('div');b.className='cls';b.style.cssText=`top:${(p.s-T0)/STEP*H+1}px;height:${(p.e-p.s)/STEP*H-2}px;border-left-color:${col}`;
    b._s=s;b._c=c;b.title='Click for details';
    b.innerHTML=`<b>${c}</b>${esc(s.time.replace(/ - /,' – '))}<br>${esc(prof)}`;cols[d].appendChild(b)});
