@@ -278,49 +278,49 @@ function generate(mn,mx){
  for(const {c,h} of S.sel){const g={},slots=[];(SEC[c]||[]).forEach(s=>(g[s.component]??=[]).push(s));let ok=true;
   for(const comp in g){const seen=new Set(),cand=g[comp].filter(s=>{if(!openOK(s)||!fits(s))return false;
     const k=[s.days,s.time,s.dates,s.instructor].join('|');if(seen.has(k))return false;seen.add(k);return true});
-   if(!cand.length){ok=false;const lbl=CT[comp]||comp;why[c]=g[comp].some(openOK)?`${c} (${lbl}) has no sections inside your selected times`:`${c} (${lbl}) has no sections matching your closed/reserved/study-abroad settings`;break}slots.push({c,cand})}
+   if(!cand.length){ok=false;const lbl=CT[comp]||comp;why[c]=g[comp].some(openOK)?`${c} (${lbl}) has no sections inside your selected times`:`${c} (${lbl}) has no sections matching your closed/reserved/study-abroad settings`;break}
+   slots.push({c,cand})}
   if(ok)info[c]={h:+h||0,slots};else bad.push(c)}
- /* choose which course sets to attempt */
- let sets=[];const feas=S.sel.filter(x=>info[x.c]);
- if(t<=mx){ // everything fits the credit cap → must schedule every class
-  if(bad.length){S.msg=bad.map(c=>why[c]).join('; ')+'.';S.bad=bad;return}
-  sets=[feas.map(x=>x.c)];
- }else{ // over the cap → randomly build maximal subsets that land in [mn,mx]; the rest are "left off"
-  const r=rng(7),seen=new Set(),tot=x=>x.reduce((a,c)=>a+info[c].h,0);
-  for(let n=0;n<400;n++){const o=feas.map(x=>[r(),x.c]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]),sub=[];let s=0;
-   for(const c of o)if(s+info[c].h<=mx){sub.push(c);s+=info[c].h}
-   const k=sub.slice().sort().join();if(s>=mn&&!seen.has(k)){seen.add(k);sets.push(sub)}}
-  sets.sort((a,b)=>tot(b)-tot(a));sets=sets.slice(0,60);
-  if(!sets.length){S.msg=`Your classes can't be combined into ${mn}–${mx} credit hours with the current times/availability.`;return}
- }
- /* randomized backtracking, many restarts → varied schedules instead of near-clones */
- const found=new Map(),per=Math.max(12,Math.ceil(1500/sets.length));
- for(const set of sets){
-  const order=set.flatMap(c=>info[c].slots).sort((a,b)=>a.cand.length-b.cand.length); // most-constrained first
-  for(let seed=1;seed<=per;seed++){
-   const r=rng(seed*31+set.length),pick=[];let nodes=0;
-   const rec=i=>{if(i==order.length)return true;
-    const cs=order[i].cand.map(x=>[r(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
-    for(const s of cs){if(++nodes>4000)return false;if(pick.some(q=>clash(q.s,s)))continue;
-     pick.push({c:order[i].c,s});if(rec(i+1))return true;pick.pop()}return false};
-   if(rec(0)){const k=pick.map(p=>p.s.class_num).sort().join();
-    if(!found.has(k))found.set(k,{pick:pick.slice(),drop:S.sel.map(x=>x.c).filter(c=>!set.includes(c)),cr:set.reduce((a,c)=>a+info[c].h,0)})}}}
- /* randomized search found nothing → run an exhaustive search before declaring "impossible" */
+ const feas=S.sel.map(x=>x.c).filter(c=>info[c]);
+ /* exhaustive backtracking: returns a schedule, false (provably none) or null (gave up at cap) */
  const solve=(order,cap)=>{let nodes=0;const pick=[];
   const rec=i=>{if(i==order.length)return true;for(const s of order[i].cand){if(++nodes>cap)return false;if(pick.some(q=>clash(q.s,s)))continue;pick.push({c:order[i].c,s});if(rec(i+1))return true;pick.pop()}return false};
   return rec(0)?pick.slice():(nodes>cap?null:false)};
- if(!found.size)for(const set of sets){const order=set.flatMap(c=>info[c].slots).sort((a,b)=>a.cand.length-b.cand.length),p=solve(order,60000);
-  if(p){found.set(p.map(x=>x.s.class_num).sort().join(),{pick:p,drop:S.sel.map(x=>x.c).filter(c=>!set.includes(c)),cr:set.reduce((a,c)=>a+info[c].h,0)});break}}
- /* score: more credits, fewer campus days, fewer idle gaps → better; keep best 30 */
- const score=o=>{let sc=-o.cr*25;for(let d=0;d<5;d++){const m=o.pick.filter(x=>prep(x.s).days.includes(d)).map(x=>prep(x.s)).sort((a,b)=>a.s-b.s);
+ /* randomized backtracking → varied schedules instead of near-clones */
+ const rnd=(order,seed)=>{const r=rng(seed),pick=[];let nodes=0;
+  const rec=i=>{if(i==order.length)return true;const cs=order[i].cand.map(x=>[r(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
+   for(const s of cs){if(++nodes>4000)return false;if(pick.some(q=>clash(q.s,s)))continue;pick.push({c:order[i].c,s});if(rec(i+1))return true;pick.pop()}return false};
+  return rec(0)?pick.slice():null};
+ const ordOf=set=>set.flatMap(c=>info[c].slots).sort((a,b)=>a.cand.length-b.cand.length); // most-constrained first
+ /* every combination of the classes whose credits land in [mn,mx]; the rest are "left off" */
+ let subs=[];const n=feas.length;
+ if(n<=14){for(let m=(1<<n)-1;m>0;m--){const sub=feas.filter((_,i)=>m>>i&1),cr=sub.reduce((a,c)=>a+info[c].h,0);if(cr>=mn&&cr<=mx)subs.push({sub,cr})}}
+ else{const r=rng(7),seen=new Set();for(let k=0;k<500;k++){const o=feas.map(c=>[r(),c]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]),sub=[];let s=0;
+   for(const c of o)if(s+info[c].h<=mx){sub.push(c);s+=info[c].h}const key=sub.slice().sort().join();if(s>=mn&&!seen.has(key)){seen.add(key);subs.push({sub,cr:s})}}}
+ subs.sort((a,b)=>b.cr-a.cr||b.sub.length-a.sub.length); // keep as many credits as possible
+ /* work down from the highest-credit combination; stop after the first credit level that has any valid schedule */
+ const found=new Map(),per=Math.max(8,Math.min(40,Math.floor(600/Math.max(1,subs.length))));let tier=null;
+ for(const {sub,cr} of subs){
+  if(found.size&&cr<tier)break;
+  const order=ordOf(sub);if(!solve(order,20000))continue;tier=cr;
+  const drop=S.sel.map(x=>x.c).filter(c=>!sub.includes(c));
+  for(let seed=1;seed<=per;seed++){const p=rnd(order,seed*31+sub.length);if(!p)continue;
+   const k=p.map(x=>x.s.class_num).sort().join();if(!found.has(k))found.set(k,{pick:p,drop,cr})}}
+ /* rank: credits first, then fewer campus days and idle gaps; keep best 30 */
+ const score=o=>{let sc=-o.cr*10000;for(let d=0;d<5;d++){const m=o.pick.filter(x=>prep(x.s).days.includes(d)).map(x=>prep(x.s)).sort((a,b)=>a.s-b.s);
    if(m.length){sc+=60;for(let i=1;i<m.length;i++)sc+=Math.max(0,m[i].s-m[i-1].e)}}return sc};
  S.res=[...found.values()].sort((a,b)=>score(a)-score(b)).slice(0,30);
- if(!S.res.length){ // say WHICH classes collide, and let the user see them
-  const cs=sets[0]||[],solo=cs.filter(c=>solve(info[c].slots,50000)===false),pairs=[];
-  if(!solo.length)for(let i=0;i<cs.length;i++)for(let j=i+1;j<cs.length;j++)if(solve(info[cs[i]].slots.concat(info[cs[j]].slots),50000)===false)pairs.push([cs[i],cs[j]]);
-  if(solo.length){S.msg=`${solo.join(', ')}: the sections you must take together always overlap within your selected times.`;S.bad=solo}
-  else if(pairs.length){S.msg=`These classes always overlap within your selected times: ${pairs.slice(0,3).map(p=>p.join(' & ')).join('; ')}.`;S.bad=[...new Set(pairs.slice(0,3).flat())]}
-  else{S.msg='No combination of these classes fits together without a time conflict.';S.bad=cs.slice()}}
+ if(S.res.length){ // some class couldn't be placed at all → say so (no button needed)
+  if(bad.length)S.msg=bad.map(c=>why[c]).join('; ')+`, so ${bad.length>1?'they were':'it was'} left off.`;return}
+ if(!subs.length){ // credit range unreachable
+  if(bad.length){S.msg=bad.map(c=>why[c]).join('; ')+'.';S.bad=bad}
+  else S.msg=`Your classes can't be combined into ${mn}–${mx} credit hours.`;return}
+ /* nothing works: say WHICH classes collide and let the user see them */
+ const solo=feas.filter(c=>solve(info[c].slots,50000)===false),pairs=[];
+ if(!solo.length)for(let i=0;i<feas.length;i++)for(let j=i+1;j<feas.length;j++)if(solve(info[feas[i]].slots.concat(info[feas[j]].slots),50000)===false)pairs.push([feas[i],feas[j]]);
+ if(solo.length){S.msg=`${solo.join(', ')}: the sections you must take together always overlap within your selected times.`;S.bad=solo}
+ else if(pairs.length){S.msg=`These classes always overlap within your selected times: ${pairs.slice(0,3).map(p=>p.join(' & ')).join('; ')}.`;S.bad=[...new Set(pairs.slice(0,3).flat())]}
+ else{S.msg='No combination of these classes fits together without a time conflict.';S.bad=feas.slice()}
 }
 
 /* "Show when those sections meet": green = your times. Left stripe = course; right stripe = one section (all its meeting days share a colour) */
